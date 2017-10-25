@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -28,10 +27,23 @@ import (
 	"time"
 
 	"github.com/gravitational/teleport"
+	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/trace"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh"
 )
+
+// SplitHostPort splits host and port and checks that host is not empty
+func SplitHostPort(hostname string) (string, string, error) {
+	host, port, err := net.SplitHostPort(hostname)
+	if err != nil {
+		return "", "", trace.Wrap(err)
+	}
+	if host == "" {
+		return "", "", trace.BadParameter("empty hostname")
+	}
+	return host, port, nil
+}
 
 type HostKeyCallback func(hostID string, remote net.Addr, key ssh.PublicKey) error
 
@@ -154,19 +166,9 @@ func ReadOrMakeHostUUID(dataDir string) (string, error) {
 	return id, nil
 }
 
-// PrintVersion prints human readable version.
-//   - distro: name of the distribution. Empty string for OSS or "enterprise"
-func PrintVersion(distro teleport.DistroType) {
-	if distro == teleport.DistroTypeEnterprise {
-		distro = " " + distro
-	} else {
-		distro = ""
-	}
-	ver := fmt.Sprintf("Teleport%s v%s", distro, teleport.Version)
-	if teleport.Gitref != "" {
-		ver = fmt.Sprintf("%s git:%s", ver, teleport.Gitref)
-	}
-	fmt.Println(ver)
+// PrintVersion prints human readable version
+func PrintVersion() {
+	modules.GetModules().PrintVersion()
 }
 
 // HumanTimeFormat formats time as recognized by humans

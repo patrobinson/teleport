@@ -6,6 +6,7 @@
 #     * edit theme/base.html and update docVersions variable
 
 cd $(dirname $0)
+rm -f latest.yaml
 
 for conf_file in $(ls *.yaml | sort); do
     echo "Building docs version --> $conf_file"
@@ -15,7 +16,7 @@ done
 # drop the 'latest.yml' symlink to the latest version so `mkdocs serve` will
 # automatically serve the latest
 echo "Latest version --> $conf_file"
-ln -s $conf_file latest.yaml
+ln -fs $conf_file latest.yaml
 
 # copy the index file which serves /docs requests and redirects
 # visitors to the latest verion of QuickStart

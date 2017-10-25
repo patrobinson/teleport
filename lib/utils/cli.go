@@ -44,8 +44,7 @@ const (
 // InitLogger configures the global logger for a given purpose / verbosity level
 func InitLogger(purpose LoggingPurpose, level log.Level) {
 	log.StandardLogger().Hooks = make(log.LevelHooks)
-	formatter := &trace.TextFormatter{}
-	formatter.DisableTimestamp = true
+	formatter := &trace.TextFormatter{DisableTimestamp: true}
 	log.SetFormatter(formatter)
 	log.SetLevel(level)
 
@@ -94,7 +93,7 @@ func FatalError(err error) {
 // UserMessageFromError returns user friendly error message from error
 func UserMessageFromError(err error) string {
 	// untrusted cert?
-	switch innerError := trace.Unwrap(err).(interface{}).(type) {
+	switch innerError := trace.Unwrap(err).(type) {
 	case x509.HostnameError:
 		return fmt.Sprintf("Cannot establish https connection to %s:\n%s\n%s\n",
 			innerError.Host,
@@ -129,7 +128,10 @@ func UserMessageFromError(err error) string {
 	if log.GetLevel() == log.DebugLevel {
 		return trace.DebugReport(err)
 	}
-	return err.Error()
+	if err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // Consolef prints the same message to a 'ui console' (if defined) and also to

@@ -40,7 +40,7 @@ func (s *ProxyTestSuite) TestParseProxyRequest(c *check.C) {
 	c.Assert(subsys.srv, check.Equals, s.srv)
 	c.Assert(subsys.host, check.Equals, "host")
 	c.Assert(subsys.port, check.Equals, "22")
-	c.Assert(subsys.siteName, check.Equals, "")
+	c.Assert(subsys.clusterName, check.Equals, "")
 
 	// similar request, just with '@' at the end (missing site)
 	subsys, err = parseProxySubsys("proxy:host:22@", s.srv)
@@ -48,7 +48,7 @@ func (s *ProxyTestSuite) TestParseProxyRequest(c *check.C) {
 	c.Assert(subsys.srv, check.Equals, s.srv)
 	c.Assert(subsys.host, check.Equals, "host")
 	c.Assert(subsys.port, check.Equals, "22")
-	c.Assert(subsys.siteName, check.Equals, "")
+	c.Assert(subsys.clusterName, check.Equals, "")
 
 	// proxy request for just the sitename
 	subsys, err = parseProxySubsys("proxy:@moon", s.srv)
@@ -57,7 +57,7 @@ func (s *ProxyTestSuite) TestParseProxyRequest(c *check.C) {
 	c.Assert(subsys.srv, check.Equals, s.srv)
 	c.Assert(subsys.host, check.Equals, "")
 	c.Assert(subsys.port, check.Equals, "")
-	c.Assert(subsys.siteName, check.Equals, "moon")
+	c.Assert(subsys.clusterName, check.Equals, "moon")
 
 	// proxy request for the host:port@sitename
 	subsys, err = parseProxySubsys("proxy:station:100@moon", s.srv)
@@ -66,5 +66,33 @@ func (s *ProxyTestSuite) TestParseProxyRequest(c *check.C) {
 	c.Assert(subsys.srv, check.Equals, s.srv)
 	c.Assert(subsys.host, check.Equals, "station")
 	c.Assert(subsys.port, check.Equals, "100")
-	c.Assert(subsys.siteName, check.Equals, "moon")
+	c.Assert(subsys.clusterName, check.Equals, "moon")
+
+	// proxy request for the host:port@namespace@cluster
+	subsys, err = parseProxySubsys("proxy:station:100@system@moon", s.srv)
+	c.Assert(err, check.IsNil)
+	c.Assert(subsys, check.NotNil)
+	c.Assert(subsys.srv, check.Equals, s.srv)
+	c.Assert(subsys.host, check.Equals, "station")
+	c.Assert(subsys.port, check.Equals, "100")
+	c.Assert(subsys.clusterName, check.Equals, "moon")
+	c.Assert(subsys.namespace, check.Equals, "system")
+}
+
+func (s *ProxyTestSuite) TestParseBadRequests(c *check.C) {
+	testCases := []string{
+		// empty request
+		"proxy:",
+		// missing hostname
+		"proxy::80",
+		// missing hostname and missing cluster name
+		"proxy:@",
+		// just random string
+		"this is bad string",
+	}
+	for _, input := range testCases {
+		comment := check.Commentf("test case: %q", input)
+		_, err := parseProxySubsys(input, s.srv)
+		c.Assert(err, check.NotNil, comment)
+	}
 }

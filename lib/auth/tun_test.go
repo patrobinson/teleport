@@ -101,7 +101,7 @@ func (s *TunSuite) SetUpTest(c *C) {
 	c.Assert(err, IsNil)
 
 	// create the default role
-	c.Assert(s.a.UpsertRole(services.NewAdminRole(false), backend.Forever), IsNil)
+	c.Assert(s.a.UpsertRole(services.NewAdminRole(), backend.Forever), IsNil)
 
 	// set up host private key and certificate
 	c.Assert(s.a.UpsertCertAuthority(
@@ -540,6 +540,76 @@ func (s *TunSuite) TestSessionsBadPassword(c *C) {
 	ws, err = clt.SignIn("not-exists", pass)
 	c.Assert(err, NotNil)
 	c.Assert(ws, IsNil)
+}
+
+// TestLoginAttempts makes sure the login attempt counter is incremented and
+// reset correctly.
+func (s *TunSuite) TestLoginAttempts(c *C) {
+	c.Assert(s.a.UpsertCertAuthority(
+		suite.NewTestCA(services.UserCA, "localhost")), IsNil)
+
+	user := "system-test"
+	pass := []byte("system-abc123")
+	rawSecret := "def456"
+	otpSecret := base32.StdEncoding.EncodeToString([]byte(rawSecret))
+
+	err := s.a.UpsertPassword(user, pass)
+	c.Assert(err, IsNil)
+
+	err = s.a.UpsertTOTP(user, otpSecret)
+	c.Assert(err, IsNil)
+
+	otpURL, _, err := s.a.GetOTPData(user)
+	c.Assert(err, IsNil)
+
+	// make sure label in url is correct
+	u, err := url.Parse(otpURL)
+	c.Assert(err, IsNil)
+	c.Assert(u.Path, Equals, "/system-test")
+
+	// create a valid otp token
+	validToken, err := totp.GenerateCode(otpSecret, time.Now())
+	c.Assert(err, IsNil)
+
+	// try first to login with an invalid password
+	authMethod, err := NewWebPasswordAuth(user, []byte("invalid-password"), validToken)
+	c.Assert(err, IsNil)
+
+	clt, err := NewTunClient("test",
+		[]utils.NetAddr{{AddrNetwork: "tcp", Addr: s.tsrv.Addr()}}, user, authMethod, TunDisableRefresh())
+	c.Assert(err, IsNil)
+	c.Assert(err, IsNil)
+
+	// we can make any request and don't care about the result. the code keyAuth
+	// code we care about is run during the ssh handshake.
+	clt.GetUsers()
+	err = clt.Close()
+	c.Assert(err, IsNil)
+
+	// should only create a single failed login attempt
+	loginAttempts, err := s.a.GetUserLoginAttempts(user)
+	c.Assert(err, IsNil)
+	c.Assert(loginAttempts, HasLen, 1)
+
+	// try again with the correct password
+	authMethod, err = NewWebPasswordAuth(user, pass, validToken)
+	c.Assert(err, IsNil)
+
+	clt, err = NewTunClient("test",
+		[]utils.NetAddr{{AddrNetwork: "tcp", Addr: s.tsrv.Addr()}}, user, authMethod, TunDisableRefresh())
+	c.Assert(err, IsNil)
+	c.Assert(err, IsNil)
+
+	// once again, we can make any request and don't care about the result. the
+	// code keyAuth code we care about is run during the ssh handshake.
+	clt.GetUsers()
+	err = clt.Close()
+	c.Assert(err, IsNil)
+
+	// login was successful, attempts should be reset back to 0
+	loginAttempts, err = s.a.GetUserLoginAttempts(user)
+	c.Assert(err, IsNil)
+	c.Assert(loginAttempts, HasLen, 0)
 }
 
 func (s *TunSuite) TestFailover(c *C) {

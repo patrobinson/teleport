@@ -15,7 +15,28 @@ limitations under the License.
 */
 
 import { Store, toImmutable } from 'nuclear-js';
+import { Record} from 'immutable';
 import { RECEIVE_USER } from './actionTypes';
+import { AuthTypeEnum } from 'app/services/enums';
+
+class UserRec extends Record({  
+  name: '',
+  authType: '',  
+}){
+
+  constructor(params){
+    super(params);            
+  }
+  
+  isSso() {
+    return this.get('authType') === AuthTypeEnum.SSO;
+  }  
+
+  getName() {
+    return this.get('name');
+  }
+
+}
 
 export default Store({
   getInitialState() {
@@ -23,11 +44,10 @@ export default Store({
   },
 
   initialize() {
-    this.on(RECEIVE_USER, receiveUser)
+    this.on(RECEIVE_USER, receiveUser);   
   }
-
 })
 
-function receiveUser(state, user){
-  return toImmutable(user);
+function receiveUser(state, json){
+  return new UserRec(json);    
 }

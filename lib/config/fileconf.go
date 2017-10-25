@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -148,11 +147,6 @@ type YAMLMap map[interface{}]interface{}
 // ReadFromFile reads Teleport configuration from a file. Currently only YAML
 // format is supported
 func ReadFromFile(filePath string) (*FileConfig, error) {
-	ext := strings.ToLower(filepath.Ext(filePath))
-	if ext != ".yaml" && ext != ".yml" {
-		return nil, trace.BadParameter(
-			"'%v' invalid configuration file type: '%v'. Only .yml is supported", filePath, ext)
-	}
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, trace.Wrap(err, fmt.Sprintf("failed to open file: %v", filePath))
@@ -269,8 +263,8 @@ func MakeSampleFileConfig() (fc *FileConfig) {
 	p.ListenAddress = conf.Proxy.SSHAddr.Addr
 	p.WebAddr = conf.Proxy.WebAddr.Addr
 	p.TunAddr = conf.Proxy.ReverseTunnelListenAddr.Addr
-	p.CertFile = "/etc/teleport/teleport.crt"
-	p.KeyFile = "/etc/teleport/teleport.key"
+	p.CertFile = "/var/lib/teleport/webproxy_cert.pem"
+	p.KeyFile = "/var/lib/teleport/webproxy_key.pem"
 
 	fc = &FileConfig{
 		Global: g,
@@ -487,7 +481,7 @@ type Auth struct {
 
 	// OIDCConnectors is a list of trusted OpenID Connect Identity providers
 	// Deprecated: Use OIDC section in Authentication section instead.
-	OIDCConnectors []OIDCConnector `yaml:"oidc_connectors"`
+	OIDCConnectors []OIDCConnector `yaml:"oidc_connectors,omitempty"`
 
 	// Configuration for "universal 2nd factor"
 	// Deprecated: Use U2F section in Authentication section instead.
@@ -524,7 +518,7 @@ func (c ClusterName) Parse() (services.ClusterName, error) {
 type StaticTokens []StaticToken
 
 func (t StaticTokens) Parse() (services.StaticTokens, error) {
-	var staticTokens []services.ProvisionToken
+	staticTokens := []services.ProvisionToken{}
 
 	for _, token := range t {
 		st, err := token.Parse()

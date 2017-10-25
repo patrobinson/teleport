@@ -22,13 +22,12 @@ import (
 	"time"
 
 	"github.com/gravitational/teleport"
-	"github.com/gravitational/teleport/lib"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/utils"
 
 	"github.com/gravitational/trace"
 	"github.com/jonboulle/clockwork"
-	log "github.com/sirupsen/logrus"
 )
 
 // TrustedCluster holds information needed for a cluster that can not be directly
@@ -200,7 +199,6 @@ func (r RoleMap) Map(remoteRoles []string) ([]string, error) {
 		outRoles = append(outRoles, wildcardMatch...)
 		return outRoles, nil
 	}
-	log.Debugf("%v: direct match: %v wildcard match: %v", r, directMatch, wildcardMatch)
 	for _, remoteRole := range remoteRoles {
 		match, ok := directMatch[remoteRole]
 		if ok {
@@ -251,8 +249,8 @@ func (c *TrustedClusterV2) CheckAndSetDefaults() error {
 	}
 	// we are not mentioning Roles parameter because we are deprecating it
 	if len(c.Spec.Roles) == 0 && len(c.Spec.RoleMap) == 0 {
-		if lib.IsEnterprise() {
-			return trace.BadParameter("missing 'role_map' parameter")
+		if err := modules.GetModules().EmptyRolesHandler(); err != nil {
+			return trace.Wrap(err)
 		}
 		// OSS teleport uses 'admin' by default:
 		c.Spec.RoleMap = RoleMap{
@@ -427,9 +425,9 @@ const RoleMapSchema = `{
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "properties": {    
+    "properties": {
       "local": {
-        "type": "array", 
+        "type": "array",
         "items": {
            "type": "string"
         }

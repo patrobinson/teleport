@@ -14,28 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-var reactor = require('app/reactor');
+import reactor from 'app/reactor';
 
-var {
-  TLPT_REST_API_START,
-  TLPT_REST_API_SUCCESS,
-  TLPT_REST_API_FAIL } = require('./actionTypes');
+import * as AT from './actionTypes';
 
 export default {
 
   start(reqType){
-    reactor.dispatch(TLPT_REST_API_START, {type: reqType});
+    reactor.dispatch(AT.TLPT_REST_API_START, {type: reqType});
   },
 
   fail(reqType, message){
-    reactor.dispatch(TLPT_REST_API_FAIL,  {type: reqType, message});
+    reactor.dispatch(AT.TLPT_REST_API_FAIL,  {type: reqType, message});
   },
 
   success(reqType){
-    reactor.dispatch(TLPT_REST_API_SUCCESS, {type: reqType});
+    reactor.dispatch(AT.TLPT_REST_API_SUCCESS, {type: reqType});
   },
 
   clear(reqType){
-    reactor.dispatch(TLPT_REST_API_SUCCESS, {type: reqType});
+    reactor.dispatch(AT.TLPT_REST_API_CLEAR, {type: reqType});
   }
 }
